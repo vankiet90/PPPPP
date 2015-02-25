@@ -1,5 +1,4 @@
 /*
- *
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -19,57 +18,29 @@
  *
 */
 
-var argscheck = require('cordova/argscheck'),
-    exec = require('cordova/exec'),
-    Camera = require('./Camera');
-    // XXX: commented out
-    //CameraPopoverHandle = require('./CameraPopoverHandle');
-
-var cameraExport = {};
-
-// Tack on the Camera Constants to the base camera plugin.
-for (var key in Camera) {
-    cameraExport[key] = Camera[key];
-}
-
-/**
- * Gets a picture from source defined by "options.sourceType", and returns the
- * image as defined by the "options.destinationType" option.
-
- * The defaults are sourceType=CAMERA and destinationType=FILE_URI.
- *
- * @param {Function} successCallback
- * @param {Function} errorCallback
- * @param {Object} options
- */
-cameraExport.getPicture = function(successCallback, errorCallback, options) {
-    argscheck.checkArgs('fFO', 'Camera.getPicture', arguments);
-    options = options || {};
-    var getValue = argscheck.getValue;
-
-    var quality = getValue(options.quality, 50);
-    var destinationType = getValue(options.destinationType, Camera.DestinationType.FILE_URI);
-    var sourceType = getValue(options.sourceType, Camera.PictureSourceType.CAMERA);
-    var targetWidth = getValue(options.targetWidth, -1);
-    var targetHeight = getValue(options.targetHeight, -1);
-    var encodingType = getValue(options.encodingType, Camera.EncodingType.JPEG);
-    var mediaType = getValue(options.mediaType, Camera.MediaType.PICTURE);
-    var allowEdit = !!options.allowEdit;
-    var correctOrientation = !!options.correctOrientation;
-    var saveToPhotoAlbum = !!options.saveToPhotoAlbum;
-    var popoverOptions = getValue(options.popoverOptions, null);
-    var cameraDirection = getValue(options.cameraDirection, Camera.Direction.BACK);
-
-    var args = [quality, destinationType, sourceType, targetWidth, targetHeight, encodingType,
-                mediaType, allowEdit, correctOrientation, saveToPhotoAlbum, popoverOptions, cameraDirection];
-
-    exec(successCallback, errorCallback, "Camera", "takePicture", args);
-    // XXX: commented out
-    //return new CameraPopoverHandle();
-};
-
-cameraExport.cleanup = function(successCallback, errorCallback) {
-    exec(successCallback, errorCallback, "Camera", "cleanup", []);
-};
-
-module.exports = cameraExport;
+document.addEventListener('DOMContentLoaded', function () {
+    document.getElementById('back').onclick = function () {
+        window.qnx.callExtensionMethod('org.apache.cordova.camera', 'cancel');
+    };
+    window.navigator.webkitGetUserMedia(
+        { video: true },
+        function (stream) {
+            var video = document.getElementById('v'),
+                canvas = document.getElementById('c'),
+                camera = document.getElementById('camera');
+            video.autoplay = true;
+            video.width = window.innerWidth;
+            video.height = window.innerHeight - 100;
+            video.src = window.webkitURL.createObjectURL(stream);
+            camera.onclick = function () {
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                canvas.getContext('2d').drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
+                window.qnx.callExtensionMethod('org.apache.cordova.camera', canvas.toDataURL('img/png'));
+            };
+        },
+        function () {
+            window.qnx.callExtensionMethod('org.apache.cordova.camera', 'error', 'getUserMedia failed');
+        }
+    );
+});
